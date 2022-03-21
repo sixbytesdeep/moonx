@@ -41,4 +41,53 @@ impl Scanner {
             keywords: HashMap::new(),
         }
     }
+
+    pub fn scan_token(&mut self) -> Result<(), (u64, String)> {
+        let c = self.advance();
+        match c {
+            '(' => self.add_token(TokenType::LeftParen),
+            ')' => self.add_token(TokenType::RightParen),
+            '{' => self.add_token(TokenType::LeftBrace),
+            '}' => self.add_token(TokenType::RightBrace),
+            ',' => self.add_token(TokenType::Comma),
+            '.' => self.add_token(TokenType::Dot),
+            '-' => self.add_token(TokenType::Minus),
+            '+' => self.add_token(TokenType::Plus),
+            ';' => self.add_token(TokenType::SemiColon),
+            '*' => self.add_token(TokenType::Bang),
+            _ => todo!(),
+        }
+        Ok(())
+    }
+
+    pub fn advance(&mut self) -> char {
+        let returned_char = self.source.chars().nth(self.current).unwrap();
+        self.current = self.current + 1;
+        returned_char
+    }
+
+    pub fn add_token(&mut self, token_type: TokenType) {
+        self.add_token_final(token_type);
+    }
+
+    pub fn add_token_final(&mut self, token_type: TokenType) {
+        let text = &self.source[self.start..self.current];
+        self.tokens.push(Token {
+            token_type,
+            lexeme: String::from(text),
+            line: self.line as u64
+        });
+    }
+}
+
+fn is_alphanumeric(c: char) -> bool {
+    is_alpha(c) || is_digit(c)
+}
+
+fn is_alpha(c: char) -> bool {
+    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+}
+
+fn is_digit(c: char) -> bool {
+    c >= '0' && c <= '9'
 }
