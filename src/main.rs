@@ -2,6 +2,7 @@ mod moon;
 mod tokentype;
 mod token;
 mod scanner;
+mod value;
 
 use std::env;
 
