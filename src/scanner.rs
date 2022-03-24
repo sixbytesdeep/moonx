@@ -1,5 +1,6 @@
 use crate::token::Token;
 use crate::tokentype::TokenType;
+use crate::value::Value;
 use std::collections::HashMap;
 
 pub struct Scanner {
@@ -40,6 +41,21 @@ impl Scanner {
             line: 1,
             keywords: HashMap::new(),
         }
+    }
+
+    pub fn scan_tokens(&mut self) -> Result<Vec<Token>, (u64, String)> {
+        while !self.is_at_end() {
+            self.start = self.current;
+            self.scan_token()?;
+        }
+
+        self.tokens.push(Token {
+            token_type: TokenType::EOF,
+            lexeme: "".to_string(),
+            literal: Value::None,
+            line: self.line as u64,
+        });
+        Ok(self.tokens.to_vec())
     }
 
     fn scan_token(&mut self) -> Result<(), (u64, String)> {
@@ -117,7 +133,21 @@ impl Scanner {
     }
 
     fn string(&mut self) {todo!()}
-    fn number(&mut self) {todo!()}
+    fn number(&mut self) {
+        while is_digit(self.peek()) {
+            self.advance();
+        }
+
+        if self.peek() == '.' && is_digit(self.peek_next()) {
+            self.advance();
+            while is_digit(self.peek()) {
+                self.advance();
+            }
+        }
+        let number_string = &self.source[self.start..self.current];
+        let number: f64 = number_string.parse().unwrap();
+        self.add_token_final(TokenType::Number, Value::Number(number));
+    }
     fn identifier(&mut self) {todo!()}
 
     fn advance(&mut self) -> char {
@@ -127,14 +157,15 @@ impl Scanner {
     }
 
     fn add_token(&mut self, token_type: TokenType) {
-        self.add_token_final(token_type);
+        self.add_token_final(token_type, Value::None);
     }
 
-    fn add_token_final(&mut self, token_type: TokenType) {
+    fn add_token_final(&mut self, token_type: TokenType, literal: Value) {
         let text = &self.source[self.start..self.current];
         self.tokens.push(Token {
             token_type,
             lexeme: String::from(text),
+            literal,
             line: self.line as u64
         });
     }
