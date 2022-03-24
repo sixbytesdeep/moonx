@@ -138,19 +138,13 @@ impl Scanner {
             if peeked == '\n' {
                 self.line += 1;
             }
-            self.advance();
-            peeked = self.peek();
         }
+        self.advance();
+        peeked = self.peek();
 
         if self.is_at_end() {
             return Err((self.line as u64, String::from("Unterminated string.")));
         }
-
-        self.advance();
-
-        let value: String = String::from(&self.source[self.start + 1 .. self.current -1]);
-        self.add_token_final(TokenType::String, Value::String(value));
-        Ok(())
     }
     fn number(&mut self) {
         while is_digit(self.peek()) {
