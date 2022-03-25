@@ -1,7 +1,7 @@
 use crate::token::Token;
 use crate::tokentype::TokenType;
 use crate::value::Value;
-use std::collections::HashMap;
+use phf::phf_map;
 
 pub struct Scanner {
     source: String,
@@ -9,29 +9,28 @@ pub struct Scanner {
     start: usize,
     current: usize,
     line: usize,
-    keywords: HashMap<String, TokenType>,
 }
 
-impl Scanner {
-    pub fn init_keywords(&mut self) {
-        self.keywords.insert("and".to_string(), TokenType::And);
-        self.keywords.insert("class".to_string(), TokenType::Class);
-        self.keywords.insert("else".to_string(), TokenType::Else);
-        self.keywords.insert("false".to_string(), TokenType::False);
-        self.keywords.insert("for".to_string(), TokenType::For);
-        self.keywords.insert("fun".to_string(), TokenType::Fun);
-        self.keywords.insert("if".to_string(), TokenType::If);
-        self.keywords.insert("null".to_string(), TokenType::Nil);
-        self.keywords.insert("or".to_string(), TokenType::Or);
-        self.keywords.insert("print".to_string(), TokenType::Print);
-        self.keywords.insert("return".to_string(), TokenType::Return);
-        self.keywords.insert("super".to_string(), TokenType::Super);
-        self.keywords.insert("this".to_string(), TokenType::This);
-        self.keywords.insert("true".to_string(), TokenType::True);
-        self.keywords.insert("var".to_string(), TokenType::Var);
-        self.keywords.insert("while".to_string(), TokenType::While);
-    }
+static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
+"and" => TokenType::And,
+"class" => TokenType::Class,
+"else" => TokenType::Else,
+"false" => TokenType::False,
+"for" => TokenType::For,
+"fun" => TokenType::Fun,
+"if" => TokenType::If,
+"nil" => TokenType::Nil,
+"or" => TokenType::Or,
+"print" => TokenType::Print,
+"return" => TokenType::Return,
+"super" => TokenType::Super,
+"this" => TokenType::This,
+"true" => TokenType::True,
+"var" => TokenType::Var,
+"while" => TokenType::While,
+};
 
+impl Scanner {
     fn new(&mut self, source: String) -> Self {
         Scanner {
             source,
@@ -39,7 +38,6 @@ impl Scanner {
             start: 0,
             current: 0,
             line: 1,
-            keywords: HashMap::new(),
         }
     }
 
@@ -167,7 +165,17 @@ impl Scanner {
         let number: f64 = number_string.parse().unwrap();
         self.add_token_final(TokenType::Number, Value::Number(number));
     }
-    fn identifier(&mut self) {todo!()}
+    fn identifier(&mut self) {
+        while is_alphanumeric(self.peek()) {
+            self.advance();
+        }
+
+        let text = &self.source[self.start..self.current];
+        match KEYWORDS.get(text) {
+            None => self.add_token(TokenType::Identifier),
+            Some(tokentype) => self.add_token(tokentype.clone())
+        }
+    }
 
     fn advance(&mut self) -> char {
         let returned_char = self.source.chars().nth(self.current).unwrap();

@@ -51,4 +51,29 @@ impl Environment {
             Some(a) => Ok(a.clone()),
         }
     }
+
+    pub(crate) fn get_by_string(&self, name: String) -> Result<Value, String> {
+        match self.values.borrow_mut().get(&*name) {
+            None => match &self.enclosing {
+                None => Err(format!("Undefined variable: '{}'.", name)),
+                Some(parent) => parent.get_by_string(name),
+            },
+            Some(a) => Ok(a.clone()),
+        }
+    }
+
+    pub(crate) fn assign(&self, name: &Token, value: Value) -> Result<(), (String, Token)> {
+        let lexeme = &*name.lexeme;
+        if self.values.borrow_mut().contains_key(lexeme) {
+            self.values.borrow_mut().insert(String::from(lexeme), value);
+            return Ok(());
+        }
+        match &self.enclosing {
+            None => {
+                let msg = format!("Undefined variable: '{}'.", name.lexeme);
+                Err((msg, name.clone()))
+            }
+            Some(parent) => parent.assign(name, value),
+        }
+    }
 }
