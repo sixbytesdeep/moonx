@@ -68,4 +68,37 @@ impl Clone for Class {
             super_class: self.super_class.clone(),
         }
     }
-} 
+}
+
+impl Class {
+    pub(crate) fn call(&self, arguments: Vec<Value>) -> Result<Value, (String, Token)> {
+        let instance = Rc::new(InstanceValue {
+            class: Rc::new(self.clone()),
+            fields: RefCell::new(HashMap::new()),
+        });
+        match self.methods.borrow().get("init") {
+            Some(a) => match a {
+                Value::Function(callable) => {
+                    callable.bind(Value::Instance(Rc::clone(&instance)));
+                    return callable.call(arguments);
+                }
+                _ => {},
+            }
+            _ => {},
+        }
+        Ok(Value::Instance(instance))
+    }
+
+    pub(crate) fn find_method(&self, name: String) -> Option<Rc<Callable>> {
+        match self.methods.borrow().get(&*name) {
+            None => match &self.super_class {
+                None => None,
+                Some(a) => a.find_method(name),
+            },
+            Some(method) => match method {
+                Value::Function(callable) => Some(Rc::clone(callable)),
+                _ => None,
+            },
+        }
+    }
+}
