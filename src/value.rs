@@ -19,8 +19,40 @@ pub enum Value {
     Instance(Rc<InstanceValue>),
 }
 
-#[derive(Debug, Clone)]
-pub struct Callable {}
+pub struct Callable {
+    pub(crate) arity: usize,
+    pub(crate) function: Rc<dyn Fn(Vec<Value>, Rc<Environment>) -> Result<Value, (String, Token)>>,
+    pub(crate) string: String,
+    pub(crate) name: Token,
+    pub(crate) environment: Rc<Environment>,
+    pub(crate) is_initializer: RefCell<bool>,
+}
+
+impl Debug for Callable {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Callable")
+            .field("string", &self.string)
+            .field("arity", &self.arity)
+            .field("name", &self.name)
+            .finish()
+    }
+}
+
+impl Clone for Callable {
+    fn clone(&self) -> Callable {
+        let borrow: &Environment = self.environment.borrow();
+        let env_clone = Rc::new(borrow.clone());
+        Callable {
+            arity: self.arity,
+            function: Rc::clone(&self.function),
+            string: self.string.clone(),
+            name: self.name.clone(),
+            environment: env_clone,
+            is_initializer: RefCell::new(*self.is_initializer.borrow()),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Class {
     pub(crate) name: String,
@@ -99,6 +131,79 @@ impl Class {
                 Value::Function(callable) => Some(Rc::clone(callable)),
                 _ => None,
             },
+        }
+    }
+}
+
+impl Callable {
+    pub(crate) fn call(&self, arguments: Vec<Value>) -> Result<Value, (String, Token)> {
+        if self.arity != arguments.len() {
+            return Err((
+                    format!(
+                        "Expected {} arguments but got {}.",
+                        self.arity,
+                        arguments.len()
+                    ),
+                    self.name.clone(),
+            ));
+        };
+
+        self.environment.define(
+            self.name.lexeme.clone(),
+            Value::Function(Rc::new(self.clone())),
+        );
+
+        let result = (self.function) (arguments, Rc::clone(&self.environment));
+
+        if *self.is_initializer.borrow() {
+            match self.environment.get_by_string(String::from("this")) {
+                Ok(a) => Ok(a),
+                Err(msg) => Err((msg, self.name.clone())),
+            }
+        } else {
+            result 
+        }
+    }
+
+    pub(crate) fn bind(&self, instance: Value) {
+        self.environment.define(String::from("this"), instance);
+    }
+
+    pub(crate) fn bind_super(&self, instance: Value) {
+        self.environment.define(String::from("super"), instance);
+    }
+
+    pub(crate) fn set_initializer(&self) {
+        self.is_initializer.swap(&RefCell::new(true));
+    }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::String(a), Value::String(b)) => a == b,
+            (Value::Number(a), Value::Number(b)) => a == b,
+            (Value::None, Value::None) => true,
+            (Value::Bool(a), Value::Bool(b)) => a == b,
+            (Value::Function(a), Value::Function(b)) => Rc::ptr_eq(a, b),
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Value {}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Value::String(a) => write!(f, "\"{}\"", a),
+            Value::Number(a) => write!(f, "{}", a),
+            Value::Bool(a) => write!(f, "{}", a),
+            Value::None => write!(f, "nil"),
+            Value::Function(a) => write!(f, "{}", a.string),
+            Value::Return(a) => write!(f, "<return {}>", a),
+            Value::Class(a) => write!(f, "{}", a.name),
+            Value::Instance(a) => write!(f, "{} instance", a.class.name),
         }
     }
 }
