@@ -249,6 +249,102 @@ impl Expr for Call {
     }
 }
 
+pub struct Get {
+    pub(crate) object: Rc<dyn Expr>,
+    pub(crate) name: Token,
+}
+
+impl Expr for Get {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        let object = self.object.evaluate(env)?;
+        match object {
+            Value::Instance(instance) => instance.get_value(&self.name),
+
+            _ => Err((String::from("Jen instance maji vlastnosti."), self.name.clone())),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Get(self.name.clone(), Rc::clone(&self.object)) 
+    }
+}
+
+pub struct Set {
+    pub(crate) object: Rc<dyn Expr>,
+    pub(crate) name: Token,
+    pub(crate) value: Rc<dyn Expr>,
+}
+
+impl Expr for Set {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        let object = self.object.evaluate(Rc::clone(&env))?;
+        match object {
+            Value::Instance(a) => {
+                let value = self.value.evaluate(Rc::clone(&env))?;
+                a.set_value(self.name.lexeme.clone(), value.clone());
+                Ok(value)
+            }
+            _ => Err((String::from("Jen instance maji pole."), self.name.clone())),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Set 
+    }
+}
+
+pub struct This {
+    pub(crate) keyword: Token,
+}
+
+impl Expr for This {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        match env.get(&self.keyword) {
+            Ok(a) => Ok(a),
+            Err(msg) => Err((msg, self.keyword.clone())),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::This 
+    }
+}
+
+pub struct Super {
+    pub(crate) keyword: Token,
+    pub(crate) method: Token,
+}
+
+impl Expr for Super {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        match env.get_by_string(String::from("super")) {
+            Ok(a) => match a {
+                Value::Class(super_class) => {
+                    match super_class.find_method(self.method.lexeme.clone()) {
+                        None => Err((format!("Neznama property'{}'.", self.method.lexeme), self.keyword.clone())),
+                        Some(method) => {
+                            let this_instance = match env.get_by_string(String::from("this")).unwrap() {
+                                Value::Instance(me) => me,
+                                _ => {
+                                    return Err((String::from("Zde melo byt this."), self.keyword.clone()));
+                                }
+                            };
+                            method.bind(Value::Instance(Rc::clone(&this_instance)));
+                            Ok(Value::Function(Rc::clone(&method)))
+                        }
+                    }
+                }
+                _ => Err((String::from("Chybi super."), self.keyword.clone())),
+            },
+            Err(msg) => Err((msg, self.keyword.clone())),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Super 
+    }
+}
+
 fn is_equal(val1: Value, val2: Value, invert: bool) -> Value {
     if invert {
         Value::Bool(val1 != val2)
