@@ -87,10 +87,186 @@ impl Expr for Binary {
     }
 }
 
+pub struct Grouping {
+    pub(crate) expression: Rc<dyn Expr>,
+}
+
+impl Expr for Grouping {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        self.expression.evaluate(env)
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Grouping
+    }
+}
+
+pub struct Literal {
+    pub(crate) value: crate::value::Value,
+}
+
+impl Expr for Literal {
+    fn evaluate(&self, _env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        Ok(self.value.clone())
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Literal
+    }
+}
+
+pub struct Unary {
+    pub(crate) operator: Token,
+    pub(crate) right: Rc<dyn Expr>,
+}
+
+impl Expr for Unary {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        let right = self.right.evaluate(env)?;
+        match self.operator.token_type {
+            TokenType::Minus => match right {
+                Value::Number(a) => Ok(Value::Number(-a.clone())),
+                _ => Err((String::from("Jsou mozna jen zaporna cisla."), self.operator.clone())),
+            },
+            TokenType::Bang => is_truth(right, true),
+            _ => Err((String::from("Neznama operace"), self.operator.clone())),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Unary
+    }
+}
+
+pub struct Variable {
+    pub(crate) name: Token,
+}
+
+impl Expr for Variable {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        match env.get(&self.name) {
+            Ok(val) => Ok(val.clone()),
+            Err(e) => Err((e, self.name.clone())),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Variable(self.name.clone())
+    }
+}
+
+pub struct NoOp {}
+
+impl Expr for NoOp {
+    fn evaluate(&self, _env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        Ok(Value::None)
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::NoOp
+    }
+}
+
+pub struct Assign {
+    pub(crate) name: Token,
+    pub(crate) value: Rc<dyn Expr>,
+}
+
+impl Expr for Assign {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        let value = self.value.evaluate(Rc::clone(&env))?;
+        match env.assign(&self.name, value.clone()) {
+            Ok(_) => Ok(value.clone()),
+            Err((msg, _token)) => Err((msg, self.name.clone())),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Assign
+    }
+}
+
+pub struct Logical {
+    pub(crate) left: Rc<dyn Expr>,
+    pub(crate) op: Token,
+    pub(crate) right: Rc<dyn Expr>,
+}
+
+impl Expr for Logical {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        let left = self.left.evaluate(Rc::clone(&env))?;
+        match self.op.token_type {
+            TokenType::Or => match is_truth(left.clone(), false)? {
+                Value::Bool(true) => Ok(left.clone()),
+                _ => Ok(self.right.evaluate(Rc::clone(&env))?),
+            },
+            _ => match is_truth(left.clone(), true)? {
+                Value::Bool(true) => Ok(left.clone()),
+                _ => Ok(self.right.evaluate(Rc::clone(&env))?),
+            },
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Logical
+    }
+}
+
+pub struct Call {
+    pub(crate) calling: Rc<dyn Expr>,
+    pub(crate) parent: Token,
+    pub(crate) arguments: Vec<Rc<dyn Expr>>,
+}
+
+impl Expr for Call {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<Value, (String, Token)> {
+        let function = self.calling.evaluate(Rc::clone(&env))?;
+        let mut arguments: Vec<Value> = Vec::new();
+        for argument in &self.arguments {
+            arguments.push(argument.evaluate(Rc::clone(&env))?);
+        }
+        match function {
+            Value::Function(callable) => {
+                if callable.arity != arguments.len() {
+                    Err((format!("Ocekavano {} argumentu ale bylo zadano {}.", callable.arity, arguments.len()), self.parent.clone()))
+                } else {
+                    match callable.call(arguments) {
+                        Ok(a) => Ok(a),
+                        Err((msg, token)) => Err((msg, token.clone())),
+                    }
+                }
+            }
+            Value::Class(class) => match class.call(arguments) {
+                Ok(a) => Ok(a),
+                Err((msg, token)) => Err((msg, token.clone())),
+            },
+            _ => Err((String::from("Lze volat jen funkce a tridy."), self.parent.clone())),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Call 
+    }
+}
+
 fn is_equal(val1: Value, val2: Value, invert: bool) -> Value {
     if invert {
         Value::Bool(val1 != val2)
     } else {
         Value::Bool(val1 == val2)
+    }
+}
+
+pub fn is_truth(val: Value, invert: bool) -> Result<Value, (String, Token)> {
+    match val {
+        Value::Bool(a) => {
+            if invert {
+                Ok(Value::Bool(!a.clone()))
+            } else {
+                Ok(val.clone())
+            }
+        }
+        Value::None => Ok(Value::Bool(false)),
+        _ => Ok(Value::Bool(true)),
     }
 }
