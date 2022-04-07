@@ -7,6 +7,7 @@ mod value;
 mod moonenv;
 mod statements;
 mod interpreter;
+mod parser;
 
 use std::env;
 
