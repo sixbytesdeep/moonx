@@ -36,6 +36,71 @@ impl Parser {
         (statements, errors)
     }
 
+    fn matching(&mut self, types: &[TokenType]) -> bool {
+        for ttype in types {
+            if self.check(ttype.clone()) {
+                self.advance();
+                return true;
+            }
+        }
+        false
+    }
+
+    fn consume(&mut self, ttype: TokenType, msg: String) -> Result<&Token, (String, Token)> {
+        if self.check(ttype) {
+            Ok(self.advance())
+        } else {
+            Err((msg, self.peek().clone()))
+        }
+    }
+
+    fn check(&self, ttype: TokenType) -> bool {
+        !self.is_at_end() && (self.peek().token_type == ttype)
+    }
+
+    fn advance(&mut self) -> &Token {
+        if !self.is_at_end() {
+            self.current = self.current + 1;
+        }
+
+        self.previous()
+    }
+
+    fn is_at_end(&self) -> bool {
+        self.peek().token_type == TokenType::EOF
+    }
+
+    fn peek(&self) -> &Token {
+        &self.tokens[self.current]
+    }
+
+    fn previous(&self) -> &Token {
+        &self.tokens[self.current - 1]
+    }
+    
+    fn synchronize(&mut self) {
+        self.advance();
+        while !self.is_at_end() {
+            if self.previous().token_type == TokenType::SemiColon {
+                return;
+            }
+            
+            match self.peek().token_type {
+                TokenType::Class
+                | TokenType::For
+                | TokenType::Fun
+                | TokenType::If
+                | TokenType::Print
+                | TokenType::Return
+                | TokenType::Var
+                | TokenType::While => return,
+                _ => {}
+            }
+            
+            self.advance();
+        }
+    }
+    
     fn expression(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
         self.assignment()
     }
@@ -43,7 +108,7 @@ impl Parser {
     fn declaration(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
         if self.matching(&[TokenType::Class]) {
             self.class_declaration()
-        } else if self.matching(&[TokenType::Fun) {
+        } else if self.matching(&[TokenType::Fun]) {
             self.fun_declaration("function")
         } else if self.matching(&[TokenType::Var]) {
             self.var_declaration()
@@ -124,4 +189,23 @@ impl Parser {
         }
         self.expression_statement()
     }
+
+    fn if_statement(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
+        self.consume(TokenType::LeftParen, String::from("Ocekavam '(' po 'if'."))?;
+        let condition = self.expression()?;
+        self.consume(
+            TokenType::RightParen,
+            String::from("Ocekavam ')' na konci podminky."),
+        )?;
+
+        let then_branch = self.statement()?;
+        let mut else_branch = None;
+
+        if self.matching(&[TokenType::Else]) {
+            else_branch = Some(self.statement()?);
+        }
+
+        Ok(Rc::new(If { condition, then_branch, else_branch }))
+    }
+
 }
