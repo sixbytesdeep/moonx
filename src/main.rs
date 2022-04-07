@@ -5,6 +5,8 @@ mod token;
 mod scanner;
 mod value;
 mod moonenv;
+mod statements;
+mod interpreter;
 
 use std::env;
 

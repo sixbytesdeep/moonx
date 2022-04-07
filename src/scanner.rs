@@ -125,7 +125,6 @@ impl Scanner {
                     return Err((self.line as u64, String::from("unexpected character.")));
                 }
             }
-            _ => todo!(),
         }
         Ok(())
     }
