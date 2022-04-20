@@ -207,5 +207,140 @@ impl Parser {
 
         Ok(Rc::new(If { condition, then_branch, else_branch }))
     }
-
+    
+    fn for_statement(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
+        self.consume(TokenType::LeftParen, String::from("Ocekavam '(' po 'for'."))?;
+        let init: Option<Rc<dyn Statement>> = if self.matching(&[TokenType::Semicolon]) {
+            None
+        } else if self.matching(&[TokenType::Var]) {
+            Some(self.var_declaration()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+        
+        let condition: Option<Rc<dyn Expression>> = if !self.check(TokenType::Semicolon) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::SemiColon, String::from("Ocekavam ';' po podmince smycky."))?;
+        
+        let increment: Option<Rc<dyn Expression>> = if !self.check(TokenType::RightParen) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        
+        self.consume(TokenType::RightParen, String::from("Ocekavam ')' po 'for'."))?;
+        
+        let mut body = self.statement()?;
+        
+        match increment {
+            Some(a) => {
+                body = Rc::new(Block {
+                    statements: vec![body, Rc::new(Expression { expression: a })],
+                })
+            }
+            None => {}
+        }
+        
+        let condition_result = match condition {
+            None => Rc::new(Literal {
+                value: Value::Bool(true),
+            }),
+            Some(a) => a,
+        };
+        
+        body = Rc::new(While {
+            condition: condition_result,
+            body,
+        });
+        
+        match init {
+            None => {}
+            Some(a) => {
+                body = Rc::new(Block {
+                    statements: vec![a, body],
+                })
+            }
+        }
+        
+        Ok(body)
+    }
+    
+    fn print_statement(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
+        let expr = self.expression()?;
+        let consumed = self.consume(TokenType::SemiColon, String::from("Ocekevam ';' for vyrazu."));
+        match consumed {
+            Ok(_) => Ok(Rc::new(Print { expression })),
+            Err(e) => Err(e),
+        }
+    }
+    
+    fn return_statement(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
+        let keyword = self.previous().clone();
+        let value = if !self.check(TokenType::SemiColon) {
+            if self.in_a_init {
+                return Err((
+                    String::from("Nemuzu vratit z initializeru."),
+                    keyword.clone(),
+                ));
+            }
+            self.expression()?
+        } else {
+            Rc::new(NoOp {})
+        };
+        self.consume(
+            TokenType::SemiColon,
+            String::from("Ocekavam ';' po hodnote co mam vratit."),
+        )?;
+        Ok(Rc::new(ReturnStatement { value }))
+    }
+    
+    fn var_declaration(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
+        let name = self
+            .consume(TokenType::Identifier, String::from("Ocekavam jmeno promenne."))?
+            .clone();
+        let to_return: Result<Rc<dyn Statement>, (String, Token)> = if self.matching(&[TokenType::Equal])
+        {
+            let initializer = self.expression()?;
+            Ok(Rc::new(Var { name, initializer }))
+        } else {
+            Ok(Rc::new(Var {
+                name,
+                initializer: Rc::new(NoOp {}),
+            }))
+        };
+        self.consume(
+            TokenType::SemiColon,
+            String::from("Ocekavam ';' po deklaraci promenne."),
+        )?;
+        to_return
+    }
+    
+    fn while_statement(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
+        self.consume(
+            TokenType::LeftParen,
+            String::from("Ocekavam '(' po while."),
+        )?;
+        let condition = self.expression()?;
+        self.consume(
+            TokenType::RightParen,
+            String::from("Ocekavam ')' po podmince."),
+        )?;
+        let body = self.statement()?;
+        Ok(Rc::new(While { condition, body }))
+    }
+    
+    fn expression_statement(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
+        let expression = self.expression()?;
+        let consumed = self.consume(
+            TokenType::SemiColon,
+            String::from("Ocekavam ';' po vyrazu."),
+        );
+        match consumed {
+            Ok(_) => Ok(Rc::new(Expression { expression })),
+            Err(e) => Err(e),
+        }
+    }
 }
