@@ -276,6 +276,7 @@ impl Parser {
             Err(e) => Err(e),
         }
     }
+<<<<<<< HEAD
     
     fn return_statement(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
         let keyword = self.previous().clone();
@@ -343,4 +344,6 @@ impl Parser {
             Err(e) => Err(e),
         }
     }
+=======
+>>>>>>> 6244b5538ecf3902f4d9d25b6ae329503d2583df
 }
