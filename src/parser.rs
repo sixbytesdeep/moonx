@@ -101,7 +101,7 @@ impl Parser {
         }
     }
     
-    fn expression(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
+    fn expression(&mut self) -> Result<Rc<dyn Expr>, (String, Token)> {
         self.assignment()
     }
 
@@ -109,7 +109,7 @@ impl Parser {
         if self.matching(&[TokenType::Class]) {
             self.class_declaration()
         } else if self.matching(&[TokenType::Fun]) {
-            self.fun_declaration("function")
+            self.function("function")
         } else if self.matching(&[TokenType::Var]) {
             self.var_declaration()
         } else {
@@ -210,7 +210,7 @@ impl Parser {
     
     fn for_statement(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
         self.consume(TokenType::LeftParen, String::from("Ocekavam '(' po 'for'."))?;
-        let init: Option<Rc<dyn Statement>> = if self.matching(&[TokenType::Semicolon]) {
+        let init: Option<Rc<dyn Statement>> = if self.matching(&[TokenType::SemiColon]) {
             None
         } else if self.matching(&[TokenType::Var]) {
             Some(self.var_declaration()?)
@@ -218,14 +218,14 @@ impl Parser {
             Some(self.expression_statement()?)
         };
         
-        let condition: Option<Rc<dyn Expression>> = if !self.check(TokenType::Semicolon) {
+        let condition: Option<Rc<dyn Expr>> = if !self.check(TokenType::SemiColon) {
             Some(self.expression()?)
         } else {
             None
         };
         self.consume(TokenType::SemiColon, String::from("Ocekavam ';' po podmince smycky."))?;
         
-        let increment: Option<Rc<dyn Expression>> = if !self.check(TokenType::RightParen) {
+        let increment: Option<Rc<dyn Expr>> = if !self.check(TokenType::RightParen) {
             Some(self.expression()?)
         } else {
             None
@@ -272,7 +272,7 @@ impl Parser {
         let expr = self.expression()?;
         let consumed = self.consume(TokenType::SemiColon, String::from("Ocekevam ';' for vyrazu."));
         match consumed {
-            Ok(_) => Ok(Rc::new(Print { expression })),
+            Ok(_) => Ok(Rc::new(Print { expressions: expr })),
             Err(e) => Err(e),
         }
     }
@@ -280,7 +280,7 @@ impl Parser {
     fn return_statement(&mut self) -> Result<Rc<dyn Statement>, (String, Token)> {
         let keyword = self.previous().clone();
         let value = if !self.check(TokenType::SemiColon) {
-            if self.in_a_init {
+            if self.in_an_init {
                 return Err((
                     String::from("Nemuzu vratit z initializeru."),
                     keyword.clone(),
@@ -304,11 +304,11 @@ impl Parser {
         let to_return: Result<Rc<dyn Statement>, (String, Token)> = if self.matching(&[TokenType::Equal])
         {
             let initializer = self.expression()?;
-            Ok(Rc::new(Var { name, initializer }))
+            Ok(Rc::new(Var { name, init: initializer }))
         } else {
             Ok(Rc::new(Var {
                 name,
-                initializer: Rc::new(NoOp {}),
+                init: Rc::new(NoOp {}),
             }))
         };
         self.consume(
@@ -343,4 +343,135 @@ impl Parser {
             Err(e) => Err(e),
         }
     }
+
+	fn function(&mut self, kind: &'static str) -> Result<Rc<dyn Statement>, (String, Token)> {
+		let name = self
+			.consume(TokenType::Identifier, format!("Ocekavam {} jmeno.", kind))?
+			.clone();
+
+		if kind == "method" && name.lexeme == "init" {
+			self.in_an_init = true
+		}
+
+		self.consume(
+			TokenType::LeftParen,
+			format!("Ocekavam '(' po {} jmenu.", kind),
+		)?;
+		let mut params: Vec<Token> = Vec::new();
+		if !self.check(TokenType::RightParen) {
+			params.push(
+				self.consume(
+					TokenType::Identifier,
+					String::from("Ocekavam jmeno parametru."),
+				)?
+				.clone(),
+			);
+			while self.matching(&[TokenType::Comma]) {
+				params.push(
+					self.consume(
+						TokenType::Identifier,
+						String::from("Ocekavam jmeno parametru."),
+					)?
+					.clone(),
+				);
+			}
+		}
+		self.consume(
+			TokenType::RightParen,
+			String::from("Ocekavam ')' po parametrech."),
+		)?;
+		self.consume(
+			TokenType::LeftBrace,
+			format!("Ocekavam '{{' pred {} telem funkce.", kind),
+		)?;
+		let body = self.block()?;
+		self.in_an_init = false;
+		Ok(Rc::new(Function {
+			name,
+			parameters: params.clone(),
+			body,
+		}))
+	}
+
+	fn block(&mut self) -> Result<Vec<Rc<dyn Statement>>, (String, Token)> {
+		let mut statements: Vec<Rc<dyn Statement>> = Vec::new();
+
+		while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+			statements.push(self.declaration()?)
+		}
+
+		self.consume(
+			TokenType::RightBrace,
+			String::from("Expect '}' after block."),
+		)?;
+		Ok(statements)
+	}
+
+	fn assignment(&mut self) -> Result<Rc<dyn Expr>, (String, Token)> {
+		let expr = self.or()?;
+		if self.matching(&[TokenType::Equal]) {
+			let equals = self.previous().clone();
+			let value = self.assignment()?;
+
+			match expr.kind() {
+				Kind::Variable(name) => Ok(Rc::new(Assign { name, value })),
+				Kind::Get(name, object) => Ok(Rc::new(Set {
+					object,
+					name,
+					value,
+				})),
+				_ => {
+					let error: String = String::from("Neznamy typ promenne.");
+					Err((error, equals))
+				}
+			}
+		} else {
+			Ok(expr)
+		}
+	}
+
+	fn or(&mut self) -> Result<Rc<dyn Expr>, (String, Token)> {
+		let mut expr = self.and()?;
+
+		while self.matching(&[TokenType::Or]) {
+			let op = self.previous().clone();
+			let right = self.and()?;
+			expr = Rc::new(Logical {
+				left: expr,
+				op,
+				right,
+			})
+		}
+		Ok(expr)
+	}
+
+	fn and(&mut self) -> Result<Rc<dyn Expr>, (String, Token)> {
+		let mut expr = self.equality()?;
+		while self.matching(&[TokenType::And]) {
+			let op = self.previous().clone();
+			let right = self.equality()?;
+			expr = Rc::new(Logical {
+				left: expr,
+				op,
+				right,
+			})
+		}
+		Ok(expr)
+	}
+
+	fn equality(&mut self) -> Result<Rc<dyn Expr>, (String, Token)> {
+		let mut expr = self.comparison()?;
+		let mut matching = self.matching(&[TokenType::BangEqual, TokenType::EqualEqual]);
+		while matching {
+			let op = self.previous().clone();
+			let right = self.comparison()?;
+			expr = Rc::new(Binary {
+				left: expr,
+				op,
+				right,
+			});
+			matching = self.matching(&[TokenType::BangEqual, TokenType::EqualEqual]);
+		}
+		Ok(expr)
+	}
 }
