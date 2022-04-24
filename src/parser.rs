@@ -474,4 +474,95 @@ impl Parser {
 		}
 		Ok(expr)
 	}
+
+	fn comparison(&mut self) -> Result<Rc<dyn Expr>, (String, Token)> {
+		let mut expr = self.term()?;
+		let types = &[
+			TokenType::Greater,
+			TokenType::GreaterEqual,
+			TokenType::Less,
+			TokenType::LessEqual,
+		];
+		let mut matching = self.matching(types);
+		while matching {
+			let op = self.previous().clone();
+			let right = self.term()?;
+			expr = Rc::new(Binary {
+				left: expr,
+				op,
+				right,
+			});
+			matching = self.matching(types);
+		}
+		Ok(expr)
+	}
+
+	fn term(&mut self) -> Result<Rc<dyn Expr>, (String, Token)> {
+		let mut expr = self.factor()?;
+		let types = &[TokenType::Minus, TokenType::Plus];
+		let mut matching = self.matching(types);
+		while matching {
+			let op = self.previous().clone();
+			let right = self.factor()?;
+			expr = Rc::new(Binary {
+				left: expr,
+				op,
+				right,
+			});
+			matching = self.matching(types);
+		}
+		Ok(expr)
+	}
+
+	fn factor(&mut self) -> Result<Rc<dyn Expr>, (String, Token)> {
+		let mut expr = self.unary()?;
+		let types = &[TokenType::Slash, TokenType::Star];
+		let mut matching = self.matching(types);
+		while matching {
+			let op = self.previous().clone();
+			let right = self.unary()?;
+			expr = Rc::new(Binary {
+				left: expr,
+				op,
+				right,
+			});
+			matching = self.matching(types);
+		}
+		Ok(expr)
+	}
+
+	fn unary(&mut self) -> Result<Rc<dyn Expr>, (String, Token)> {
+		let types = &[TokenType::Minus, TokenType::Bang];
+		let matching = self.matching(types);
+		if matching {
+			let op = self.previous().clone();
+			let right = self.unary()?;
+			let expr = Rc::new(Unary { operator: op, right });
+			return Ok(expr);
+		}
+		self.call()
+	}
+
+	fn call(&mut self) -> Result<Rc<dyn Expr>, (String, Token)> {
+		let mut expr = self.primary()?;
+		loop {
+			if self.matching(&[TokenType::LeftParen]) {
+				expr = self.finish_call(expr)?;
+			} else if self.matching(&[TokenType::Dot]) {
+				let name = self
+					.consume(
+						TokenType::Identifier,
+						String::from("Ocekavam jmeno property po '.'."),
+					)?
+					.clone();
+				expr = Rc::new(Get {
+					name,
+					object: Rc::clone(&expr),
+				})
+			} else {
+				break;
+			}
+		}
+		Ok(expr)
+	}
 }
