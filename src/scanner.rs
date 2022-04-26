@@ -31,7 +31,7 @@ static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
 };
 
 impl Scanner {
-    fn new(&mut self, source: String) -> Self {
+    pub fn new(source: String) -> Self {
         Scanner {
             source,
             tokens: Vec::new(),

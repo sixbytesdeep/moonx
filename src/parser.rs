@@ -565,4 +565,48 @@ impl Parser {
 		}
 		Ok(expr)
 	}
+
+	fn finish_call(&mut self, caller: Rc<dyn Expr>) -> Result<Rc<dyn Expr>, (String, Token)> {
+		let mut arguments: Vec<Rc<dyn Expr>> = Vec::new();
+		if !self.check(TokenType::RightParen) {
+			arguments.push(self.expression()?);
+			while self.matching(&[TokenType::Comma]) {
+				arguments.push(self.expression()?);
+			}
+		}
+
+		let paren = self.consume(
+			TokenType::RightParen,
+			String::from("Ocekavam '(' po argumentech funkce."),
+		)?
+		.clone();
+
+		Ok(Rc::new(Call {
+			calling: caller,
+			parent: paren,
+			arguments,
+		}))
+	}
+
+	fn primary(&mut self) -> Result<Rc<dyn Expr>, (String, Token)> {
+		if self.matching(&[TokenType::False]) {
+			return Ok(Rc::new(Literal {
+				value: Value::Bool(false),
+			}));
+		}
+
+		if self.matching(&[TokenType::String, TokenType::Number]) {
+			return Ok(Rc::new(Literal {
+				value: self.previous().literal.clone(),
+			}));
+		}
+
+		if self.matching(&[TokenType::Identifier]) {
+			return Ok(Rc::new(Variable {
+				name: self.previous().clone(),
+			}));
+		}
+
+		Ok(Rc::new(NoOp {}))
+	}
 }

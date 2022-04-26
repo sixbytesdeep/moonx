@@ -2,14 +2,25 @@ use std::fs;
 use std::io;
 use std::io::Write;
 
+use crate::interpreter::Interpreter;
+use crate::parser::Parser;
+use crate::scanner::Scanner;
+use crate::token::Token;
+use crate::tokentype::TokenType;
+
 pub struct Moon {
     had_error: bool,
     had_runtime_error: bool,
+    interpreter: Interpreter,
 }
 
 impl Moon {
     pub fn new() -> Self {
-        Moon { had_error: false, had_runtime_error: false }
+        Moon {
+        	had_error: false,
+        	had_runtime_error: false,
+        	interpreter: Interpreter::new(), 
+        }
     }
 
     pub fn run_file(&mut self, path: &String) {
@@ -43,7 +54,29 @@ impl Moon {
     }
 
     pub fn run(&mut self, source: String, quit_on_error: bool) {
-        todo!("implement run");
+        let mut scanner = Scanner::new(source);
+        let tokens: Vec<Token> = match scanner.scan_tokens() {
+        	Ok(a) => a,
+        	Err((line, string)) => {
+        		self.error(line, string);
+        		Vec::new()
+        	}
+        };
+        if quit_on_error && (self.had_error || self.had_runtime_error) {
+        	return;
+        }
+        let mut parser = Parser::new(tokens);
+        let (statements, errors) = parser.parse();
+        for (token, msg) in errors {
+        	self.error_parse(&token, &*msg);
+        }
+        if quit_on_error && (self.had_error || self.had_runtime_error) {
+        	return;
+        }
+        match self.interpreter.interpret(statements) {
+        	Ok(_) => {}
+        	Err((msg, token)) => self.runtime_error((String::from(msg), token.clone())),
+        }
     }
 
     pub fn error(&mut self, line: u64, message: String) {
@@ -53,5 +86,23 @@ impl Moon {
     pub fn report(&mut self, line: u64, where_error: String, message: String) {
         eprintln!("[line {}] Error {}: {}", line, where_error, message);
         self.had_error = true;
+    }
+
+    pub fn error_parse(&mut self, token: &Token, msg: &str) {
+    	self.had_error = true;
+    	match token.token_type {
+    		TokenType::EOF => self.report(token.line, String::from("at end"), String::from(msg)),
+    		_ => self.report(
+    			token.line,
+    			format!("at '{}'", token.lexeme),
+    			String::from(msg),
+    		),
+    	}
+    }
+
+    pub fn runtime_error(&mut self, error: (String, Token)) {
+    	let (msg, token) = error;
+    	eprintln!("{}\n[line {}]", msg, token.line);
+    	self.had_runtime_error = true;
     }
 }
