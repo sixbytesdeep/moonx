@@ -1,0 +1,5 @@
+fun pow(a) {
+	print a;
+}
+
+pow(6);

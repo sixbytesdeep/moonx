@@ -38,7 +38,7 @@ impl Expr for Binary {
         let token = self.op.clone();
         match self.op.token_type {
             TokenType::BangEqual => Ok(is_equal(left, right, true)),
-            TokenType::EqualEqual => Ok(is_equal(left, right, true)),
+            TokenType::EqualEqual => Ok(is_equal(left, right, false)),
             TokenType::Greater => match (left, right) {
                 (Value::Number(a), Value::Number(b)) => Ok(Value::Bool(a > b)),
                 _ => Err((String::from("Lze porovnat jen 2 cisla."), token)),

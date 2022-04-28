@@ -607,6 +607,64 @@ impl Parser {
 			}));
 		}
 
+		if self.matching(&[TokenType::True]) {
+			return Ok(Rc::new(Literal {
+				value: Value::Bool(true),
+			}));
+		}
+
+		if self.matching(&[TokenType::Nil]) {
+			return Ok(Rc::new(Literal {
+				value: Value::None,
+			}));
+		}
+
+		if self.matching(&[TokenType::LeftParen]) {
+			let expr = self.expression()?;
+			self.consume(
+				TokenType::RightParen,
+				String::from("Ocekavam ')' po vyrazu."),	
+			)?;
+			return Ok(Rc::new(Grouping { expression: expr }));
+		}
+
+		if self.matching(&[TokenType::This]) {
+			return if self.in_a_class {
+				Ok(Rc::new(This {
+					keyword: self.previous().clone(),
+				}))
+			} else {
+				return Err((
+					String::from("Nelze pouzit 'this' mimo tridu."),
+					self.peek().clone(),
+				));
+			};
+		}
+
+		if self.matching(&[TokenType::Super]) {
+			let keyword = self.previous().clone();
+			if !self.in_a_class {
+				return Err((
+					String::from("Nelze pouzit 'super' mimo tridu."),
+					keyword,
+				));
+			}
+			if !self.in_a_subclass {
+				return Err((
+					String::from("Nelze pouzit 'super' we tride beze super tridy."),
+					keyword,
+				));
+			}
+			self.consume(TokenType::Dot, String::from("Ocekavam '.' po 'super'."))?;
+			let method = self
+				.consume(
+					TokenType::Identifier,
+					String::from("Ocekavam jmeno super tridy."),
+				)?
+				.clone();
+			return Ok(Rc::new(Super { keyword, method }));
+		}
+
 		Ok(Rc::new(NoOp {}))
 	}
 }

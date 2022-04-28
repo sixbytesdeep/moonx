@@ -68,7 +68,7 @@ impl Scanner {
             '-' => self.add_token(TokenType::Minus),
             '+' => self.add_token(TokenType::Plus),
             ';' => self.add_token(TokenType::SemiColon),
-            '*' => self.add_token(TokenType::Bang),
+            '*' => self.add_token(TokenType::Star),
             '!' => {
                 let following = self.match_char('=');
                 self.add_token(if following {
