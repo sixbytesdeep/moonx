@@ -7,3 +7,8 @@ edition = "2021"
 
 [dependencies]
 phf = { version = "0.10", features = ["macros"] }
+
+[[bin]]
+name = "moon"
+test = false
+bench = false
