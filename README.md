@@ -27,3 +27,29 @@ Nyní je potřeba vygenerovaný spustitelný soubor přesunout na místo, kde ho
 Nyní už půjde jazyk spustit příkazem `moon`.
 
 ### Jak Moon používat?
+Moon má dva módy ve kterých se dá spustit. Po napsání pouze příkazu `moon`, se spustí interaktivní příkazová řádka, neboli REPL (read-eval-print-loop). Do této příkazové řádky jdou přímo vkládat příkazy, které má jazyk provést. Stejné jako REPL [Pythonu](https://www.python.org/).
+
+V druhém módu je potřeba uvést jméno souboru který chceme spustit. To provedeme příkazem: `moon <jmeno souboru>`. Soubory by měly mít koncovku `.lox`.
+
+Syntax je podobný nejblíže [JavaScriptu](https://cs.wikipedia.org/wiki/JavaScript).
+
+Zde si ukážeme pár příkladů:
+
+1. Hello world!
+```javascript
+print "Hello World!";
+> "Hello World"
+```
+2. Proměnné
+```javascript
+var i = 10;
+var jmeno = "alexandr";
+var pravda_nebo_lez = false;
+
+print i;
+> 10
+print jmeno;
+> "alexandr"
+print pravda_nebo_lez;
+> false
+```
