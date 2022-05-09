@@ -37,19 +37,38 @@ Zde si ukážeme pár příkladů:
 
 1. Hello world!
 ```javascript
-print "Hello World!";
-> "Hello World"
+> print "Hello World!";
+"Hello World"
 ```
 2. Proměnné
 ```javascript
-var i = 10;
-var jmeno = "alexandr";
-var pravda_nebo_lez = false;
+> var i = 10;
+> var jmeno = "alexandr";
+> var pravda_nebo_lez = false;
 
-print i;
-> 10
-print jmeno;
-> "alexandr"
-print pravda_nebo_lez;
-> false
+> print i;
+10
+> print jmeno;
+"alexandr"
+> print pravda_nebo_lez;
+false
+```
+3. Matematické operace
+```javascript
+> 5 + 5;
+10
+> 4 - 3;
+1
+> 3 * 5;
+15
+> 6 / 2;
+3
+```
+4. Funkce
+```javascript
+fun pozdrav(jmeno) {
+    print "Ahoj"+jmeno;
+};
+
+pozdrav("sasa");
 ```
