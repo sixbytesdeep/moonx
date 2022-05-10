@@ -26,6 +26,8 @@ Nyní je potřeba vygenerovaný spustitelný soubor přesunout na místo, kde ho
 
 Nyní už půjde jazyk spustit příkazem `moon`.
 
+<div style="page-break-after: always;"></div>
+
 ### Jak Moon používat?
 Moon má dva módy ve kterých se dá spustit. Po napsání pouze příkazu `moon`, se spustí interaktivní příkazová řádka, neboli REPL (read-eval-print-loop). Do této příkazové řádky jdou přímo vkládat příkazy, které má jazyk provést. Stejné jako REPL [Pythonu](https://www.python.org/).
 
@@ -64,6 +66,8 @@ false
 > 6 / 2;
 3
 ```
+<div style="page-break-after: always;"></div>
+
 4. Funkce
 ```javascript
 fun pozdrav(jmeno) {
@@ -71,4 +75,35 @@ fun pozdrav(jmeno) {
 };
 
 pozdrav("sasa");
+
+fun returning(cislo) {
+    return cislo+5;
+}
+
+var n = returning(5);
+print n; // zobrazi 10
 ```
+Funkce podporují rekurzi.
+
+5. `if` a `else`
+```javascript
+var cislo = 10;
+if (cislo > 10) {
+    print "vetsi";
+}
+else {
+    print "mensi";
+}
+```
+6. `for` a `while`
+```javascript
+for (var i; i < 10; i = i + 1) {
+    print i;
+}
+
+var n = 0;
+while (n != 10) {
+    n = n + 1;
+}
+```
+U `for` loops je momentálně bug u kterého jsem ještě nenašel řešení. Hodnoty proměnné `i` jsou zobrazeny dvakrát.
