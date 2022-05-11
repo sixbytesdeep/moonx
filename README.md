@@ -107,3 +107,38 @@ while (n != 10) {
 }
 ```
 U `for` loops je momentálně bug u kterého jsem ještě nenašel řešení. Hodnoty proměnné `i` jsou zobrazeny dvakrát.
+
+7. Třídy
+```javascript
+class Jidlo {
+    snist() {
+        print "mnam mnam";
+    }
+}
+
+var jidlo = Jidlo();
+jidlo.snist(); // "mnam mnam"
+jidlo.navic = "omacka";
+print jidlo.navic; // "omacka"
+
+class Zvire {
+    jsem() {
+        print "Momentalne jsem " + this.jmeno + "!";
+    }
+}
+
+var zvire = Zvire();
+zvire.jmeno = "medved";
+zvire.jsem(); // "Momentalne jsem medved!"
+
+class Krabice {
+    init(vec) {
+        this.vec = vec;
+    }
+}
+
+var krabice1 = Krabice("vajicka");
+print krabice1.vec; // "vajicka"
+var krabice2 = Krabice("mrkev");
+print krabice2.vec; // "mrkev"
+```
