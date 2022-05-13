@@ -108,6 +108,8 @@ while (n != 10) {
 ```
 U `for` loops je momentálně bug u kterého jsem ještě nenašel řešení. Hodnoty proměnné `i` jsou zobrazeny dvakrát.
 
+<div style="page-break-after: always;"></div>
+
 7. Třídy
 ```javascript
 class Jidlo {
@@ -141,4 +143,15 @@ var krabice1 = Krabice("vajicka");
 print krabice1.vec; // "vajicka"
 var krabice2 = Krabice("mrkev");
 print krabice2.vec; // "mrkev"
+```
+8. Prvních 20 čísel Fibonacciho sekvence
+```javascript
+fun fib(n) {
+	if (n <= 1) return n;
+	return fib(n-2) + fib(n-1);
+}
+
+for (var i = 0; i < 20; i = i+1) {
+	print fib(i);
+}
 ```
