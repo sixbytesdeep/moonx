@@ -1,5 +1,0 @@
-fun pozdrav(jmeno) {
-	print "ahoj"+jmeno;
-};
-
-pozdrav("sasa");
