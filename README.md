@@ -158,7 +158,7 @@ for (var i = 0; i < 20; i = i+1) {
 
 <div style="page-break-after: always;"></div>
 
-### Zdroje
+### **Zdroje**
 *NYSTROM, Robert. Crafting Interpreters [online]. 2015 - 2021 [cit. 2022-05-18]. Dostupné z: https://craftinginterpreters.com/contents.html*
 
 *Stack Overflow [online]. [cit. 2022-05-18]. Dostupné z: https://stackoverflow.com/*
