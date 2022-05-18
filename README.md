@@ -155,3 +155,14 @@ for (var i = 0; i < 20; i = i+1) {
 	print fib(i);
 }
 ```
+
+<div style="page-break-after: always;"></div>
+
+### Zdroje
+*NYSTROM, Robert. Crafting Interpreters [online]. 2015 - 2021 [cit. 2022-05-18]. Dostupné z: https://craftinginterpreters.com/contents.html*
+
+*Stack Overflow [online]. [cit. 2022-05-18]. Dostupné z: https://stackoverflow.com/*
+
+*Rust Book [online]. [cit. 2022-05-18]. Dostupné z: https://doc.rust-lang.org/book/*
+
+Praktická část seminární práce se nachází na https://github.com/sixbytesdeep/moonx.
